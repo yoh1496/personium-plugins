@@ -18,8 +18,8 @@ package io.personium.plugin.auth.google.code;
 
 import java.util.Map;
 
-import io.personium.plugin.base.PluginConfig.OIDC;
-import io.personium.plugin.base.PluginLog;
+import io.personium.plugin.base.PluginBaseConfig.OIDC;
+import io.personium.plugin.base.PluginBaseLog;
 import io.personium.plugin.base.auth.AuthPluginException;
 import io.personium.plugin.base.auth.AuthPlugin;
 import io.personium.plugin.base.auth.AuthConst;
@@ -85,7 +85,8 @@ public class GoogleCodeAuthPlugin implements AuthPlugin {
         }
         // id_tokenをパースする
         GoogleIdToken ret = GoogleIdToken.parse(idToken);
-        // Tokenの検証   検証失敗時にはDcCoreAuthnExceptionが投げられる
+
+        // Tokenの検証   検証失敗時にはAuthPluginExceptionが投げられる
         ret.verify();
 
         String issuer = ret.getIssuer();
@@ -95,7 +96,7 @@ public class GoogleCodeAuthPlugin implements AuthPlugin {
     	// Token検証成功の後処理
         // Googleが認めたissuerであるかどうか
         if (!issuer.equals(URL_ISSUER) && !issuer.equals(URL_HTTPS + URL_ISSUER)) {
-            PluginLog.OIDC.INVALID_ISSUER.params(issuer).writeLog();
+            PluginBaseLog.OIDC.INVALID_ISSUER.params(issuer).writeLog();
             throw AuthPluginException.OIDC_AUTHN_FAILED;
         }
 

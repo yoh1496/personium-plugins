@@ -31,7 +31,6 @@ import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.personium.plugin.base.PluginException;
 import io.personium.plugin.base.auth.AuthPluginException;
 import io.personium.plugin.base.utils.JsonUtils;
 import io.personium.plugin.base.utils.PluginUtils;
@@ -87,8 +86,8 @@ public class GoogleIdToken {
      * @param json JSON
      */
     public GoogleIdToken(JSONObject json) {
-        this.setEmail((String) json.get("email"));
         this.setIssuer((String) json.get("issuer"));
+        this.setEmail((String) json.get("email"));
         this.setAudience((String) json.get("audience"));
         this.setExp((Long) json.get("exp"));
     }
@@ -107,12 +106,12 @@ public class GoogleIdToken {
         if (splitIdToken.length != SPLIT_TOKEN_NUM) {
             throw AuthPluginException.OIDC_INVALID_ID_TOKEN.params("2 periods required.");
         }
-
         ret.header = splitIdToken[0];
         ret.payload = splitIdToken[1];
         ret.signature = splitIdToken[2];
 
-        JSONObject header = (JSONObject)JsonUtils.tokenToJSON(ret.header);
+        // TokenからJSONObjectを生成
+    	JSONObject header = (JSONObject)JsonUtils.tokenToJSON(ret.header);
         JSONObject payload = (JSONObject)JsonUtils.tokenToJSON(ret.payload);
 
     	ret.kid = (String) header.get(KID);
@@ -200,7 +199,7 @@ public class GoogleIdToken {
 
                 } catch (NoSuchAlgorithmException e1) {
                     // ktyの値がRSA以外はサポートしない
-                    throw PluginException.NetWork.UNEXPECTED_VALUE.params(KTY, RSA).reason(e1);
+                    throw AuthPluginException.OIDC_UNEXPECTED_VALUE.params(KTY, RSA).reason(e1);
 
                 } catch (InvalidKeySpecException e1) {
                     // バグ以外でここには来ない
