@@ -31,8 +31,9 @@ import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.personium.plugin.base.PluginException;
 import io.personium.plugin.base.auth.AuthPluginException;
-import io.personium.plugin.base.utils.JsonUtils;
+import io.personium.plugin.base.auth.AuthPluginUtils;
 import io.personium.plugin.base.utils.PluginUtils;
 
 /**
@@ -58,20 +59,16 @@ public class GoogleIdToken {
     private static final String GOOGLE_DISCOV_DOC_URL = "https://accounts.google.com/.well-known/openid-configuration";
     private static final String ALG = "SHA256withRSA";
     private static final String RSA = "RSA";
-
     private static final String KID = "kid";
     private static final String KTY = "kty";
-
     private static final String ISS = "iss";
     private static final String EML = "email";
     private static final String AUD = "aud";
     private static final String EXP = "exp";
-
     private static final String N = "n";
     private static final String E = "e";
 
     private static final int SPLIT_TOKEN_NUM = 3;
-
     private static final int VERIFY_WAIT = 60;
     private static final int VERIFY_SECOND = 1000;
 
@@ -98,22 +95,28 @@ public class GoogleIdToken {
      * @param idToken IDトークン
      *
      * @return googleIdToken GoogleIdToken
+     * @throws PluginException 
      */
-    public static GoogleIdToken parse(String idToken) {
+    public static GoogleIdToken parse(String idToken) throws AuthPluginException {
     	GoogleIdToken ret = new GoogleIdToken();
 
     	String[] splitIdToken = idToken.split("\\.");
         if (splitIdToken.length != SPLIT_TOKEN_NUM) {
-            throw AuthPluginException.OIDC_INVALID_ID_TOKEN.params("2 periods required.");
+            throw AuthPluginException.OIDC_INVALID_ID_TOKEN.params("2 periods required");
         }
         ret.header = splitIdToken[0];
         ret.payload = splitIdToken[1];
         ret.signature = splitIdToken[2];
 
         // TokenからJSONObjectを生成
-    	JSONObject header = (JSONObject)JsonUtils.tokenToJSON(ret.header);
-        JSONObject payload = (JSONObject)JsonUtils.tokenToJSON(ret.payload);
-
+    	JSONObject header = null;
+        JSONObject payload = null;
+		try {
+			header = (JSONObject)AuthPluginUtils.tokenToJSON(ret.header);
+			payload = (JSONObject)AuthPluginUtils.tokenToJSON(ret.payload);
+		} catch (PluginException pe) {
+			throw AuthPluginException.conversion(pe);
+		}
     	ret.kid = (String) header.get(KID);
     	ret.issuer = (String) payload.get(ISS);
     	ret.email = (String) payload.get(EML);
@@ -127,8 +130,9 @@ public class GoogleIdToken {
      * Verification　signature.
      *
      * @param null
+     * @throws AuthPluginException 
      */
-    public void verify() throws AuthPluginException  {
+    public void verify() throws AuthPluginException {
     	// 有効期限
     	isExpired(this.getExp());
 
@@ -145,11 +149,11 @@ public class GoogleIdToken {
 
         } catch (NoSuchAlgorithmException e) {
             // 環境がおかしい以外でここには来ない
-            throw new RuntimeException(ALG + " not supported.", e);
+            throw AuthPluginException.OIDC_UNEXPECTED_VALUE.params(ALG + " not supported.").reason(e);
 
         } catch (InvalidKeyException e) {
             // バグ以外でここには来ない
-            throw new RuntimeException(e);
+            throw AuthPluginException.OIDC_INVALID_KEY.params(ALG + " not supported.").reason(e);
 
         } catch (SignatureException e) {
             // IdTokenのSignatureがおかしい
@@ -157,7 +161,7 @@ public class GoogleIdToken {
             // type,
             // if this signature algorithm is unable to process the input data
             // provided, etc.
-            throw AuthPluginException.OIDC_INVALID_ID_TOKEN.params("ID Token sig value is invalid.");
+            throw AuthPluginException.OIDC_INVALID_ID_TOKEN.params("ID Token sig value is invalid").reason(e);
         }
     }
 
@@ -165,27 +169,35 @@ public class GoogleIdToken {
      * getJwksUri.
      * @param endpoint
      * @return
+     * @throws PluginException 
      */
-    private static String getJwksUri(String endpoint) {
-        return (String) JsonUtils.getHttpJSON(endpoint).get("jwks_uri");
+    private static String getJwksUri(String endpoint) throws PluginException {
+		return (String) PluginUtils.getHttpJSON(endpoint).get("jwks_uri");
     }
 
     /**
      * getKeys.
      * @param url String
      * @return JSONArray
+     * @throws AuthPluginException 
      */
-    private static JSONArray getKeys() {
-        return (JSONArray) JsonUtils.getHttpJSON(getJwksUri(GOOGLE_DISCOV_DOC_URL)).get("keys");
+    private static JSONArray getKeys() throws AuthPluginException {
+        try {
+			return (JSONArray) PluginUtils.getHttpJSON(getJwksUri(GOOGLE_DISCOV_DOC_URL)).get("keys");
+		} catch (PluginException pe) {
+			throw AuthPluginException.conversion(pe);
+		}
     }
 
     /**
      * 公開鍵情報から、IDTokenのkidにマッチする方で公開鍵を生成.
      *
      * @return RSAPublicKey 公開鍵
+     * @throws AuthPluginException 
      */
-    private RSAPublicKey getKey() {
-        JSONArray jsonAry = getKeys();
+    private RSAPublicKey getKey() throws AuthPluginException {
+        JSONArray jsonAry;
+		jsonAry = getKeys();
         for (int i = 0; i < jsonAry.size(); i++) {
             JSONObject k = (JSONObject) jsonAry.get(i);
             String compKid = (String) k.get(KID);
@@ -203,7 +215,7 @@ public class GoogleIdToken {
 
                 } catch (InvalidKeySpecException e1) {
                     // バグ以外でここには来ない
-                    throw new RuntimeException(e1);
+                    throw AuthPluginException.OIDC_INVALID_KEY.params(KTY, RSA).reason(e1);
                 }
             }
         }
@@ -213,8 +225,9 @@ public class GoogleIdToken {
 
     /**
      * isExpired.
+     * @throws PluginException 
      */
-    private	void isExpired(Long exp) {
+    private	void isExpired(Long exp) throws AuthPluginException {
     	// exp で Token の有効期限が切れているか確認
     	// Tokenに有効期限(exp)があるかnullチェック
         if (exp == null) {
@@ -224,7 +237,7 @@ public class GoogleIdToken {
         // expireしていないかチェック(60秒くらいは過ぎても良い)
         boolean expired = (exp + VERIFY_WAIT) * VERIFY_SECOND < System.currentTimeMillis();
         if (expired) {
-            throw AuthPluginException.OIDC_EXPIRED_ID_TOKEN.params(exp);
+            throw AuthPluginException.OIDC_EXPIRED_ID_TOKEN.params("This ID Token has expired. EXP=" + exp);
         }
     }
 

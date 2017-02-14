@@ -18,8 +18,9 @@ package io.personium.plugin.auth.google.code;
 
 import java.util.Map;
 
-import io.personium.plugin.base.PluginBaseConfig.OIDC;
-import io.personium.plugin.base.PluginBaseLog;
+import io.personium.plugin.base.PluginConfig.OIDC;
+import io.personium.plugin.base.PluginLog;
+import io.personium.plugin.base.PluginException;
 import io.personium.plugin.base.auth.AuthPluginException;
 import io.personium.plugin.base.auth.AuthPlugin;
 import io.personium.plugin.base.auth.AuthConst;
@@ -70,24 +71,24 @@ public class GoogleCodeAuthPlugin implements AuthPlugin {
 	/**
 	 * authenticate.
 	 * @return au AuthenticatedIdentity
-	 * @throws AuthPluginException
+	 * @throws PluginException 
 	 */
-    public AuthenticatedIdentity authenticate(Map <String, String> body) {
+    public AuthenticatedIdentity authenticate(Map <String, String> body) throws AuthPluginException {
     	AuthenticatedIdentity ai = null;
 		if (body == null) {
-        	throw AuthPluginException.REQUIRED_PARAM_MISSING.params("Body does not exist.");
+        	throw AuthPluginException.REQUIRED_PARAM_MISSING.params("Body");
 		}
 
 		// verify idToken
 		String idToken = (String)body.get(AuthConst.KEY_TOKEN);
         if (idToken == null) {
-            throw AuthPluginException.REQUIRED_PARAM_MISSING.params("ID Token does not exist.");
+            throw AuthPluginException.REQUIRED_PARAM_MISSING.params("ID Token");
         }
         // id_tokenをパースする
         GoogleIdToken ret = GoogleIdToken.parse(idToken);
 
         // Tokenの検証   検証失敗時にはAuthPluginExceptionが投げられる
-        ret.verify();
+		ret.verify();
 
         String issuer = ret.getIssuer();
         String aud  = ret.getAudience();
@@ -96,7 +97,7 @@ public class GoogleCodeAuthPlugin implements AuthPlugin {
     	// Token検証成功の後処理
         // Googleが認めたissuerであるかどうか
         if (!issuer.equals(URL_ISSUER) && !issuer.equals(URL_HTTPS + URL_ISSUER)) {
-            PluginBaseLog.OIDC.INVALID_ISSUER.params(issuer).writeLog();
+            PluginLog.OIDC.INVALID_ISSUER.params(issuer).writeLog();
             throw AuthPluginException.OIDC_AUTHN_FAILED;
         }
 
@@ -110,7 +111,7 @@ public class GoogleCodeAuthPlugin implements AuthPlugin {
         ai = new AuthenticatedIdentity();
         // アカウント名を設定する
         ai.setAccountName(mail);
-        // アカウントタイプを設定する
+        // OIDC TYPEを設定する
         ai.setAttributes(AuthConst.KEY_OIDC_TYPE, AuthConst.KEY_OIDC_TYPE + ":" + OIDC_PROVIDER);
 
         return ai;
