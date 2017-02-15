@@ -149,11 +149,11 @@ public class GoogleIdToken {
 
         } catch (NoSuchAlgorithmException e) {
             // 環境がおかしい以外でここには来ない
-            throw AuthPluginException.OIDC_UNEXPECTED_VALUE.params(ALG + " not supported.").reason(e);
+            throw AuthPluginException.OIDC_UNEXPECTED_VALUE.params(ALG + " not supported.");
 
         } catch (InvalidKeyException e) {
             // バグ以外でここには来ない
-            throw AuthPluginException.OIDC_INVALID_KEY.params(ALG + " not supported.").reason(e);
+            throw AuthPluginException.OIDC_INVALID_KEY.params(ALG + " not supported.");
 
         } catch (SignatureException e) {
             // IdTokenのSignatureがおかしい
@@ -161,7 +161,7 @@ public class GoogleIdToken {
             // type,
             // if this signature algorithm is unable to process the input data
             // provided, etc.
-            throw AuthPluginException.OIDC_INVALID_ID_TOKEN.params("ID Token sig value is invalid").reason(e);
+            throw AuthPluginException.OIDC_INVALID_ID_TOKEN.params("ID Token sig value is invalid");
         }
     }
 
@@ -211,11 +211,11 @@ public class GoogleIdToken {
 
                 } catch (NoSuchAlgorithmException e1) {
                     // ktyの値がRSA以外はサポートしない
-                    throw AuthPluginException.OIDC_UNEXPECTED_VALUE.params(KTY, RSA).reason(e1);
+                    throw AuthPluginException.OIDC_UNEXPECTED_VALUE.params(KTY, RSA);
 
                 } catch (InvalidKeySpecException e1) {
                     // バグ以外でここには来ない
-                    throw AuthPluginException.OIDC_INVALID_KEY.params(KTY, RSA).reason(e1);
+                    throw AuthPluginException.OIDC_INVALID_KEY.params(KTY, RSA);
                 }
             }
         }
