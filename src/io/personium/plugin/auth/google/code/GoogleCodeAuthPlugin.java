@@ -21,7 +21,6 @@ import java.util.Map;
 import io.personium.plugin.base.PluginConfig.OIDC;
 import io.personium.plugin.base.PluginLog;
 import io.personium.plugin.base.PluginException;
-import io.personium.plugin.base.auth.AuthPluginException;
 import io.personium.plugin.base.auth.AuthPlugin;
 import io.personium.plugin.base.auth.AuthConst;
 import io.personium.plugin.base.auth.AuthenticatedIdentity;
@@ -73,21 +72,27 @@ public class GoogleCodeAuthPlugin implements AuthPlugin {
 	 * @return au AuthenticatedIdentity
 	 * @throws PluginException 
 	 */
-    public AuthenticatedIdentity authenticate(Map <String, String> body) throws AuthPluginException {
+    public AuthenticatedIdentity authenticate(Map <String, String> body) throws PluginException {
     	AuthenticatedIdentity ai = null;
 		if (body == null) {
-        	throw AuthPluginException.REQUIRED_PARAM_MISSING.params("Body");
+        	throw PluginException.Authn.REQUIRED_PARAM_MISSING.params("Body");
 		}
 
 		// verify idToken
 		String idToken = (String)body.get(AuthConst.KEY_TOKEN);
         if (idToken == null) {
-            throw AuthPluginException.REQUIRED_PARAM_MISSING.params("ID Token");
+            throw PluginException.Authn.REQUIRED_PARAM_MISSING.params("ID Token");
         }
-        // id_tokenをパースする
-        GoogleIdToken ret = GoogleIdToken.parse(idToken);
+        
+        GoogleIdToken ret = null;
+        try {
+            // id_tokenをパースする
+            ret = GoogleIdToken.parse(idToken);
+        } catch(PluginException pe){
+        	throw PluginException.Authn.OIDC_INVALID_ID_TOKEN.reason(pe);
+        }
 
-        // Tokenの検証   検証失敗時にはAuthPluginExceptionが投げられる
+        // Tokenの検証   検証失敗時にはPluginExceptionが投げられる
 		ret.verify();
 
         String issuer = ret.getIssuer();
@@ -98,13 +103,13 @@ public class GoogleCodeAuthPlugin implements AuthPlugin {
         // Googleが認めたissuerであるかどうか
         if (!issuer.equals(URL_ISSUER) && !issuer.equals(URL_HTTPS + URL_ISSUER)) {
             PluginLog.OIDC.INVALID_ISSUER.params(issuer).writeLog();
-            throw AuthPluginException.OIDC_AUTHN_FAILED;
+            throw PluginException.Authn.OIDC_AUTHN_FAILED;
         }
 
         // Googleに登録したサービス/アプリのClientIDかを確認
         // DcConfigPropatiesに登録したClientIdに一致していればOK
         if (!OIDC.isProviderClientIdTrusted(OIDC_PROVIDER, aud)) {
-        	throw AuthPluginException.OIDC_WRONG_AUDIENCE.params(aud);
+        	throw PluginException.Authn.OIDC_WRONG_AUDIENCE.params(aud);
         }
 
         // 正常な場合、AuthenticatedIdentity を返却する。
