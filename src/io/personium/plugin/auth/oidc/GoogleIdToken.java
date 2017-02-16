@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.personium.plugin.auth.google.code;
+package io.personium.plugin.auth.oidc;
 
 import io.personium.plugin.base.PluginException;
 import io.personium.plugin.base.auth.AuthPluginUtils;

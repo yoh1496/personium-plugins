@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.personium.plugin.auth.google.code;
+package io.personium.plugin.auth.oidc;
 
 import java.util.Map;
 
@@ -25,7 +25,7 @@ import io.personium.plugin.base.auth.AuthPlugin;
 import io.personium.plugin.base.auth.AuthConst;
 import io.personium.plugin.base.auth.AuthenticatedIdentity;
 
-public class GoogleCodeAuthPlugin implements AuthPlugin {
+public class GoogleIdTokenAuthPlugin implements AuthPlugin {
     /** to String. **/
     public static final String PLUGIN_TOSTRING = "Google Code Flow Authentication";
 
