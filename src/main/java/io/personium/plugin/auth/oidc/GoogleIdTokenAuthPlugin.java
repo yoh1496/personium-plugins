@@ -89,7 +89,8 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
             // id_tokenをパースする
             ret = GoogleIdToken.parse(idToken);
         } catch(PluginException pe){
-        	throw PluginException.Authn.OIDC_INVALID_ID_TOKEN.reason(pe);
+        	throw PluginException.Authn.OIDC_INVALID_ID_TOKEN;
+//        	throw PluginException.Authn.OIDC_INVALID_ID_TOKEN.reason(pe);
         }
 
         // Tokenの検証   検証失敗時にはPluginExceptionが投げられる
