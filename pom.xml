@@ -79,9 +79,6 @@
 					<encoding>UTF-8</encoding>
 					<debug>true</debug>
 					<optimize>false</optimize>
-					<excludes>
-						<exclude>${java.exclude.name}</exclude>
-					</excludes>
 				</configuration>
 			</plugin>
 		</plugins>
