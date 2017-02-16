@@ -68,15 +68,6 @@
 				<directory>src/main/resources</directory>
 				<filtering>true</filtering>
 			</resource>
-				<resource>
-						<targetPath>META-INF</targetPath>
-						<directory>..</directory>
-						<includes>
-								<include>LICENSE.txt</include>
-								<include>NOTICE.txt</include>
-								<include>CHANGES.txt</include>
-						</includes>
-				</resource>
 		</resources>
 		<plugins>
 			<plugin>
