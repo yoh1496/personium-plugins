@@ -27,10 +27,10 @@ import io.personium.plugin.base.auth.AuthenticatedIdentity;
 
 public class GoogleIdTokenAuthPlugin implements AuthPlugin {
     /** to String. **/
-    public static final String PLUGIN_TOSTRING = "Google Code Flow Authentication";
+    public static final String PLUGIN_TOSTRING = "Google Open ID Connect Authentication";
 
     /** urn google grantType. **/
-    public static final String PLUGIN_GRANT_TYPE = "urn:x-personium:oidc:google:code";
+    public static final String PLUGIN_GRANT_TYPE = "urn:x-personium:oidc:google";
 
 	/**
 	 * toString.
