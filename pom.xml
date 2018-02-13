@@ -24,7 +24,7 @@
 		<dependency>
 			<groupId>io.personium</groupId>
 			<artifactId>personium-plugin-base</artifactId>
-			<version>1.0.1</version>
+			<version>1.0.2</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -57,6 +57,11 @@
 			<snapshots>
 				<enabled>false</enabled>
 			</snapshots>
+		</repository>
+		<repository>
+			<id>personium.io</id>
+			<name>personium.io</name>
+			<url>http://personium.io/mvnrepo</url>
 		</repository>
 	</repositories>
 	<distributionManagement>
