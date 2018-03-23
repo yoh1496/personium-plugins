@@ -3,7 +3,7 @@
 	<groupId>io.personium</groupId>
 	<artifactId>personium-plugins</artifactId>
 	<packaging>jar</packaging>
-	<version>1.0.2</version>
+	<version>1.0.3-SNAPSHOT</version>
 	<name>personium-plugins</name>
 	<licenses>
 		<license>
