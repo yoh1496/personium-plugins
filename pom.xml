@@ -18,18 +18,18 @@
 		<java.version>1.8</java.version>
 		<java.source.version>1.8</java.source.version>
 		<java.target.version>1.8</java.target.version>
-		<slf4j.version>1.7.6</slf4j.version>
+		<slf4j.version>1.7.25</slf4j.version>
 	</properties>
 	<dependencies>
 		<dependency>
 			<groupId>io.personium</groupId>
 			<artifactId>personium-plugin-base</artifactId>
-			<version>1.0.3</version>
+			<version>1.0.4-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.10</version>
+			<version>4.12</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -82,13 +82,38 @@
 		<plugins>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.5.1</version>
+				<version>3.7.0</version>
 				<configuration>
 					<source>${java.version}</source>
 					<target>${java.version}</target>
 					<encoding>UTF-8</encoding>
 					<debug>true</debug>
 					<optimize>false</optimize>
+					<compilerArgs>
+						<arg>-Xlint:all</arg>
+					</compilerArgs>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-checkstyle-plugin</artifactId>
+				<version>3.0.0</version>
+				<configuration>
+					<encoding>UTF-8</encoding>
+					<configLocation>personium-checkstyle.xml</configLocation>
+					<propertiesLocation>checkstyle_maven.properties</propertiesLocation>
+					<includeTestSourceDirectory>true</includeTestSourceDirectory>
+					<consoleOutput>true</consoleOutput>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-pmd-plugin</artifactId>
+				<version>3.9.0</version>
+				<configuration>
+					<targetJdk>${java.version}</targetJdk>
+					<analysisCache>true</analysisCache>
+					<linkXRef>false</linkXRef>
 				</configuration>
 			</plugin>
 		</plugins>

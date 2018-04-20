@@ -25,6 +25,9 @@ import io.personium.plugin.base.auth.AuthPlugin;
 import io.personium.plugin.base.auth.AuthConst;
 import io.personium.plugin.base.auth.AuthenticatedIdentity;
 
+/**
+ * GoogleIdTokenAuthPlugin.
+ */
 public class GoogleIdTokenAuthPlugin implements AuthPlugin {
     /** to String. **/
     public static final String PLUGIN_TOSTRING = "Google Open ID Connect Authentication";
@@ -32,34 +35,36 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
     /** urn google grantType. **/
     public static final String PLUGIN_GRANT_TYPE = "urn:x-personium:oidc:google";
 
-	/**
-	 * toString.
-	 * @return String
-	 */
-	public String toString(){
+    /**
+     * toString.
+     * @return String
+     */
+    public String toString() {
         return PLUGIN_TOSTRING;
     }
 
     /**
-	 * getType.
-	 * @return String
-	 */
-	public String getType() {
-		return AuthConst.TYPE_AUTH;
-	}
+     * getType.
+     * @return String
+     */
+    public String getType() {
+        return AuthConst.TYPE_AUTH;
+    }
 
-	/**
-	 * getGrantType.
-	 * @return String
-	 */
-	public String getGrantType() {
-		return PLUGIN_GRANT_TYPE;
-	}
+    /**
+     * getGrantType.
+     * @return String
+     */
+    public String getGrantType() {
+        return PLUGIN_GRANT_TYPE;
+    }
 
     /**
      * Google URL
      */
+    /** Google URL scheme. */
     public static final String URL_HTTPS = "https://";
+    /** Google URL host. */
     public static final String URL_ISSUER = "accounts.google.com";
 
     /**
@@ -67,40 +72,41 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
      */
     public static final String OIDC_PROVIDER = "google";
 
-	/**
-	 * authenticate.
-	 * @return au AuthenticatedIdentity
-	 * @throws PluginException 
-	 */
-    public AuthenticatedIdentity authenticate(Map <String, String> body) throws PluginException {
-    	AuthenticatedIdentity ai = null;
-		if (body == null) {
-        	throw PluginException.Authn.REQUIRED_PARAM_MISSING.params("Body");
-		}
+    /**
+     * authenticate.
+     * @param body body
+     * @return au AuthenticatedIdentity
+     * @throws PluginException PluginException
+     */
+    public AuthenticatedIdentity authenticate(Map<String, String> body) throws PluginException {
+        AuthenticatedIdentity ai = null;
+        if (body == null) {
+            throw PluginException.Authn.REQUIRED_PARAM_MISSING.params("Body");
+        }
 
-		// verify idToken
-		String idToken = (String)body.get(AuthConst.KEY_TOKEN);
+        // verify idToken
+        String idToken = (String) body.get(AuthConst.KEY_TOKEN);
         if (idToken == null) {
             throw PluginException.Authn.REQUIRED_PARAM_MISSING.params("ID Token");
         }
-        
+
         GoogleIdToken ret = null;
         try {
             // id_tokenをパースする
             ret = GoogleIdToken.parse(idToken);
-        } catch(PluginException pe){
-        	throw PluginException.Authn.OIDC_INVALID_ID_TOKEN;
-//        	throw PluginException.Authn.OIDC_INVALID_ID_TOKEN.reason(pe);
+        } catch (PluginException pe) {
+            throw PluginException.Authn.OIDC_INVALID_ID_TOKEN;
+//            throw PluginException.Authn.OIDC_INVALID_ID_TOKEN.reason(pe);
         }
 
         // Tokenの検証   検証失敗時にはPluginExceptionが投げられる
-		ret.verify();
+        ret.verify();
 
         String issuer = ret.getIssuer();
         String aud  = ret.getAudience();
         String mail = ret.getEmail();
 
-    	// Token検証成功の後処理
+        // Token検証成功の後処理
         // Googleが認めたissuerであるかどうか
         if (!issuer.equals(URL_ISSUER) && !issuer.equals(URL_HTTPS + URL_ISSUER)) {
             PluginLog.OIDC.INVALID_ISSUER.params(issuer).writeLog();
@@ -110,7 +116,7 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
         // Googleに登録したサービス/アプリのClientIDかを確認
         // DcConfigPropatiesに登録したClientIdに一致していればOK
         if (!OIDC.isProviderClientIdTrusted(OIDC_PROVIDER, aud)) {
-        	throw PluginException.Authn.OIDC_WRONG_AUDIENCE.params(aud);
+            throw PluginException.Authn.OIDC_WRONG_AUDIENCE.params(aud);
         }
 
         // 正常な場合、AuthenticatedIdentity を返却する。
