@@ -16,13 +16,16 @@
  */
 package io.personium.plugin.auth.oidc;
 
+import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
+
 import io.personium.plugin.base.PluginConfig.OIDC;
-import io.personium.plugin.base.PluginLog;
 import io.personium.plugin.base.PluginException;
-import io.personium.plugin.base.auth.AuthPlugin;
+import io.personium.plugin.base.PluginLog;
 import io.personium.plugin.base.auth.AuthConst;
+import io.personium.plugin.base.auth.AuthPlugin;
 import io.personium.plugin.base.auth.AuthenticatedIdentity;
 
 /**
@@ -34,6 +37,11 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
 
     /** urn google grantType. **/
     public static final String PLUGIN_GRANT_TYPE = "urn:x-personium:oidc:google";
+    /** Target account type. */
+    private static final String PLUGIN_ACCOUNT_TYPE = "oidc:google";
+
+    /** id token. */
+    public static final String KEY_TOKEN = "id_token";
 
     /**
      * toString.
@@ -47,16 +55,27 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
      * getType.
      * @return String
      */
+    @Override
     public String getType() {
-        return AuthConst.TYPE_AUTH;
+        return AuthConst.PLUGIN_TYPE;
     }
 
     /**
      * getGrantType.
      * @return String
      */
+    @Override
     public String getGrantType() {
         return PLUGIN_GRANT_TYPE;
+    }
+
+    /**
+     * getAccountType.
+     * @return String
+     */
+    @Override
+    public String getAccountType() {
+        return PLUGIN_ACCOUNT_TYPE;
     }
 
     /**
@@ -78,25 +97,21 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
      * @return au AuthenticatedIdentity
      * @throws PluginException PluginException
      */
-    public AuthenticatedIdentity authenticate(Map<String, String> body) throws PluginException {
+    public AuthenticatedIdentity authenticate(Map<String, List<String>> body) throws PluginException {
         AuthenticatedIdentity ai = null;
         if (body == null) {
-            throw PluginException.Authn.REQUIRED_PARAM_MISSING.params("Body");
+            throw OidcPluginException.REQUIRED_PARAM_MISSING.params("Body");
         }
 
         // verify idToken
-        String idToken = (String) body.get(AuthConst.KEY_TOKEN);
-        if (idToken == null) {
-            throw PluginException.Authn.REQUIRED_PARAM_MISSING.params("ID Token");
-        }
+        String idToken = getSingleValue(body, KEY_TOKEN);
 
         GoogleIdToken ret = null;
         try {
             // id_tokenをパースする
             ret = GoogleIdToken.parse(idToken);
         } catch (PluginException pe) {
-            throw PluginException.Authn.OIDC_INVALID_ID_TOKEN;
-//            throw PluginException.Authn.OIDC_INVALID_ID_TOKEN.reason(pe);
+            throw OidcPluginException.OIDC_INVALID_ID_TOKEN;
         }
 
         // Tokenの検証   検証失敗時にはPluginExceptionが投げられる
@@ -110,22 +125,41 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
         // Googleが認めたissuerであるかどうか
         if (!issuer.equals(URL_ISSUER) && !issuer.equals(URL_HTTPS + URL_ISSUER)) {
             PluginLog.OIDC.INVALID_ISSUER.params(issuer).writeLog();
-            throw PluginException.Authn.OIDC_AUTHN_FAILED;
+            throw OidcPluginException.OIDC_AUTHN_FAILED;
         }
 
         // Googleに登録したサービス/アプリのClientIDかを確認
         // DcConfigPropatiesに登録したClientIdに一致していればOK
         if (!OIDC.isProviderClientIdTrusted(OIDC_PROVIDER, aud)) {
-            throw PluginException.Authn.OIDC_WRONG_AUDIENCE.params(aud);
+            throw OidcPluginException.OIDC_WRONG_AUDIENCE.params(aud);
         }
 
         // 正常な場合、AuthenticatedIdentity を返却する。
         ai = new AuthenticatedIdentity();
         // アカウント名を設定する
         ai.setAccountName(mail);
-        // OIDC TYPEを設定する
-        ai.setAttributes(AuthConst.KEY_OIDC_TYPE, AuthConst.KEY_OIDC_TYPE + ":" + OIDC_PROVIDER);
+        // アカウントタイプを設定する
+        ai.setAccountType(AuthConst.KEY_OIDC_TYPE + ":" + OIDC_PROVIDER);
 
         return ai;
+    }
+
+    /**
+     * Get single value in the body.
+     * @param body request body
+     * @param key map key
+     * @return Value corresponding to key
+     * @throws PluginException Value does not exist
+     */
+    private String getSingleValue(Map<String, List<String>> body, String key) throws PluginException {
+        List<String> valueList = body.get(key);
+        if (valueList == null) {
+            throw OidcPluginException.REQUIRED_PARAM_MISSING.params(key);
+        }
+        String value = valueList.get(0);
+        if (StringUtils.isEmpty(value)) {
+            throw OidcPluginException.REQUIRED_PARAM_MISSING.params(key);
+        }
+        return value;
     }
 }
