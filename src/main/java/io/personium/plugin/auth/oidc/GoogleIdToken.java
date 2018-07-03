@@ -16,10 +16,6 @@
  */
 package io.personium.plugin.auth.oidc;
 
-import io.personium.plugin.base.PluginException;
-import io.personium.plugin.base.auth.AuthPluginUtils;
-import io.personium.plugin.base.utils.PluginUtils;
-
 import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
@@ -32,8 +28,13 @@ import java.security.spec.RSAPublicKeySpec;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.personium.plugin.base.PluginException;
+import io.personium.plugin.base.auth.AuthPluginUtils;
+import io.personium.plugin.base.utils.PluginUtils;
 
 /**
  * GoogleIdToken.
@@ -101,7 +102,7 @@ public class GoogleIdToken {
 
         String[] splitIdToken = idToken.split("\\.");
         if (splitIdToken.length != SPLIT_TOKEN_NUM) {
-            throw PluginException.Authn.OIDC_INVALID_ID_TOKEN.params("2 periods required");
+            throw OidcPluginException.OIDC_INVALID_ID_TOKEN.params("2 periods required");
         }
         ret.header = splitIdToken[0];
         ret.payload = splitIdToken[1];
@@ -110,8 +111,12 @@ public class GoogleIdToken {
         // TokenからJSONObjectを生成
         JSONObject header = null;
         JSONObject payload = null;
-        header = (JSONObject) AuthPluginUtils.tokenToJSON(ret.header);
-        payload = (JSONObject) AuthPluginUtils.tokenToJSON(ret.payload);
+        try {
+            header = (JSONObject) AuthPluginUtils.tokenToJSON(ret.header);
+            payload = (JSONObject) AuthPluginUtils.tokenToJSON(ret.payload);
+        } catch (ParseException e) {
+            throw OidcPluginException.OIDC_INVALID_ID_TOKEN.params("Header and payload should be Base64 encoded JSON.");
+        }
         ret.kid = (String) header.get(KID);
         ret.issuer = (String) payload.get(ISS);
         ret.email = (String) payload.get(EML);
@@ -137,16 +142,16 @@ public class GoogleIdToken {
             boolean verified = sig.verify(PluginUtils.decodeBase64Url(this.getSignature()));
             if (!verified) {
                 // 署名検証結果、署名が不正であると認定
-                throw PluginException.Authn.OIDC_AUTHN_FAILED;
+                throw OidcPluginException.OIDC_AUTHN_FAILED;
             }
 
         } catch (NoSuchAlgorithmException e) {
             // 環境がおかしい以外でここには来ない
-            throw PluginException.Authn.OIDC_UNEXPECTED_VALUE.params(ALG + " not supported.");
+            throw OidcPluginException.OIDC_UNEXPECTED_VALUE.params(ALG + " not supported.");
 
         } catch (InvalidKeyException e) {
             // バグ以外でここには来ない
-            throw PluginException.Authn.OIDC_INVALID_KEY.params(ALG + " not supported.");
+            throw OidcPluginException.OIDC_INVALID_KEY.params(ALG + " not supported.");
 
         } catch (SignatureException e) {
             // IdTokenのSignatureがおかしい
@@ -154,7 +159,7 @@ public class GoogleIdToken {
             // type,
             // if this signature algorithm is unable to process the input data
             // provided, etc.
-            throw PluginException.Authn.OIDC_INVALID_ID_TOKEN.params("ID Token sig value is invalid");
+            throw OidcPluginException.OIDC_INVALID_ID_TOKEN.params("ID Token sig value is invalid");
         }
     }
 
@@ -200,16 +205,16 @@ public class GoogleIdToken {
 
                 } catch (NoSuchAlgorithmException e1) {
                     // ktyの値がRSA以外はサポートしない
-                    throw PluginException.Authn.OIDC_UNEXPECTED_VALUE.params(KTY, RSA);
+                    throw OidcPluginException.OIDC_UNEXPECTED_VALUE.params(KTY, RSA);
 
                 } catch (InvalidKeySpecException e1) {
                     // バグ以外でここには来ない
-                    throw PluginException.Authn.OIDC_INVALID_KEY.params(KTY, RSA);
+                    throw OidcPluginException.OIDC_INVALID_KEY.params(KTY, RSA);
                 }
             }
         }
         // 該当するkidを持つ鍵情報が取れなかった場合
-        throw PluginException.Authn.OIDC_INVALID_ID_TOKEN.params("ID Token header value is invalid.");
+        throw OidcPluginException.OIDC_INVALID_ID_TOKEN.params("ID Token header value is invalid.");
     }
 
     /**
@@ -220,13 +225,13 @@ public class GoogleIdToken {
         // exp で Token の有効期限が切れているか確認
         // Tokenに有効期限(exp)があるかnullチェック
         if (exp == null) {
-            throw PluginException.Authn.OIDC_INVALID_ID_TOKEN.params("ID Token expiration time null.");
+            throw OidcPluginException.OIDC_INVALID_ID_TOKEN.params("ID Token expiration time null.");
         }
 
         // expireしていないかチェック(60秒くらいは過ぎても良い)
         boolean expired = (exp + VERIFY_WAIT) * VERIFY_SECOND < System.currentTimeMillis();
         if (expired) {
-            throw PluginException.Authn.OIDC_EXPIRED_ID_TOKEN.params("This ID Token has expired. EXP=" + exp);
+            throw OidcPluginException.OIDC_EXPIRED_ID_TOKEN.params("This ID Token has expired. EXP=" + exp);
         }
     }
 
