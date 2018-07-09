@@ -20,18 +20,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.MessageFormat;
 import java.util.Properties;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import org.apache.http.HttpStatus;
-
-import io.personium.plugin.base.PluginException;
+import io.personium.plugin.base.auth.AuthPluginException;
+import io.personium.plugin.base.auth.OAuth2Helper;
 import io.personium.plugin.base.utils.EscapeControlCode;
 
 /**
  * OidcPluginException.
  */
-public class OidcPluginException extends PluginException {
+public class OidcPluginException {
 
     /** エラーメッセージ設定のキー. 後ろにメッセージコードをつけるのでドットまで定義. */
     private static final String ERROR_MESSAGE = "io.personium.core.msg.";
@@ -39,19 +36,38 @@ public class OidcPluginException extends PluginException {
     private static final Properties ERR_MSG_PROP = loadProperties("personium-plugins-error-messages.properties");
 
     /** 必須パラメータが無い. */
-    public static final OidcPluginException REQUIRED_PARAM_MISSING = create("PR400-AN-0016");
+    public static final OidcPluginException REQUIRED_PARAM_MISSING =
+            new OidcPluginException(OAuth2Helper.Error.INVALID_REQUEST, "PR400-AN-0001");
     /** IDTokenの検証の中で、受け取ったIdTokenのAudienceが信頼するClientIDのリストに無かった. */
-    public static final OidcPluginException OIDC_WRONG_AUDIENCE = create("PR400-AN-0030");
+    public static final OidcPluginException WRONG_AUDIENCE =
+            new OidcPluginException(OAuth2Helper.Error.INVALID_GRANT, "PR400-AN-0002");
     /** OIDCの認証エラー. */
-    public static final OidcPluginException OIDC_AUTHN_FAILED = create("PR400-AN-0031");
+    public static final OidcPluginException AUTHN_FAILED =
+            new OidcPluginException(OAuth2Helper.Error.INVALID_GRANT, "PR400-AN-0003");
     /** 無効なIDToken. */
-    public static final OidcPluginException OIDC_INVALID_ID_TOKEN = create("PR400-AN-0032");
+    public static final OidcPluginException INVALID_ID_TOKEN =
+            new OidcPluginException(OAuth2Helper.Error.INVALID_GRANT, "PR400-AN-0004");
     /** IDTokenの有効期限切れ. */
-    public static final OidcPluginException OIDC_EXPIRED_ID_TOKEN = create("PR400-AN-0033");
+    public static final OidcPluginException EXPIRED_ID_TOKEN =
+            new OidcPluginException(OAuth2Helper.Error.INVALID_GRANT, "PR400-AN-0005");
     /** 接続先が想定外の値を返却. */
-    public static final OidcPluginException OIDC_UNEXPECTED_VALUE = create("PR400-AN-0034");
+    public static final OidcPluginException UNEXPECTED_VALUE =
+            new OidcPluginException(OAuth2Helper.Error.INVALID_GRANT, "PR400-AN-0006");
     /** 公開鍵の形式ｉ異常を返却. */
-    public static final OidcPluginException OIDC_INVALID_KEY = create("PR400-AN-0035");
+    public static final OidcPluginException INVALID_KEY =
+            new OidcPluginException(OAuth2Helper.Error.INVALID_GRANT, "PR400-AN-0007");
+
+    /**  HTTPリクエストに失敗. */
+    public static final OidcPluginException HTTP_REQUEST_FAILED =
+            new OidcPluginException(OAuth2Helper.Error.SERVER_ERROR, "PR500-NW-0001");
+    /** 接続先が想定外の応答を返却. */
+    public static final OidcPluginException UNEXPECTED_RESPONSE =
+            new OidcPluginException(OAuth2Helper.Error.SERVER_ERROR, "PR500-NW-0002");
+
+    /** OAuth2.0 response "error". */
+    private String oAuth2Error;
+    /** Response message. */
+    private String message;
 
     /**
      * Load properties file.
@@ -64,53 +80,61 @@ public class OidcPluginException extends PluginException {
         try (InputStream is = OidcPluginException.class.getClassLoader().getResourceAsStream(file)) {
             prop.load(is);
         } catch (IOException e) {
-            throw new PluginException(HttpStatus.SC_INTERNAL_SERVER_ERROR, "Failed to load properties.");
+            throw new RuntimeException("Failed to load properties.", e);
         }
         return prop;
     }
 
-    private OidcPluginException(int statusCode, String message) {
-        super(statusCode, message);
+    /**
+     * Constructor.
+     * @param oAuth2Error OAuth2.0 response "error"
+     * @param messageCode Response message code
+     */
+    private OidcPluginException(String oAuth2Error, String messageCode) {
+        this.oAuth2Error = oAuth2Error;
+        message = getMessage(messageCode);
     }
 
     /**
-     * ファクトリーメソッド.
-     * @param code メッセージコード
-     * @return PluginException
+     * Create AuthPluginException.
+     * @return AuthPluginException
      */
-    public static OidcPluginException create(String code) {
-        int statusCode = parseCode(code);
-        String message = getMessage(code);
-        return new OidcPluginException(statusCode, message);
-    }
-
-    /**
-     * メッセージをパラメタ置換したものを作成して返します. エラーメッセージ上の $1 $2 等の表現がパラメタ置換用キーワードです。
-     * @param params 付加メッセージ
-     * @return PersoniumCoreMessage
-     */
-    public OidcPluginException params(Object... params) {
-        // 置換メッセージ作成
-        String ms = MessageFormat.format(getMessage(), params);
-        // 制御コードのエスケープ処理
-        ms = EscapeControlCode.escape(ms);
-        // メッセージ置換クローンを作成
-        return new OidcPluginException(getStatusCode(), ms);
-    }
-
-    /**
-     * メッセージコードのパース.
-     * @param code メッセージコード
-     * @return ステータスコードまたはログメッセージの場合は-1。
-     */
-    private static int parseCode(String code) {
-        Pattern p = Pattern.compile("^PR(\\d{3})-\\w{2}-\\d{4}$");
-        Matcher m = p.matcher(code);
-        if (!m.matches()) {
-            throw new IllegalArgumentException(
-                    "message code should be in \"PR000-OD-0000\" format. code=[" + code + "].");
+    public AuthPluginException create() {
+        switch (oAuth2Error) {
+            case OAuth2Helper.Error.INVALID_REQUEST:
+                return new AuthPluginException.InvalidRequest(message);
+            case OAuth2Helper.Error.INVALID_CLIENT:
+                return new AuthPluginException.InvalidClient(message);
+            case OAuth2Helper.Error.INVALID_GRANT:
+                return new AuthPluginException.InvalidGrant(message);
+            case OAuth2Helper.Error.UNAUTHORIZED_CLIENT:
+                return new AuthPluginException.UnauthorizedClient(message);
+            case OAuth2Helper.Error.ACCESS_DENIED:
+                return new AuthPluginException.AccessDenied(message);
+            case OAuth2Helper.Error.UNSUPPORTED_GRANT_TYPE:
+                return new AuthPluginException.UnsupportedGrantType(message);
+            case OAuth2Helper.Error.UNSUPPORTED_RESPONSE_TYPE:
+                return new AuthPluginException.UnsupportedResponseType(message);
+            case OAuth2Helper.Error.INVALID_SCOPE:
+                return new AuthPluginException.InvalidScope(message);
+            case OAuth2Helper.Error.SERVER_ERROR:
+                return new AuthPluginException.ServerError(message);
+            case OAuth2Helper.Error.TEMPORARILY_UNAVAILABLE:
+                return new AuthPluginException.TemporarilyUnavailable(message);
+            default:
+                throw new RuntimeException("Exception settings error.");
         }
-        return Integer.parseInt(m.group(1));
+    }
+
+    /**
+     * Create AuthPluginException.
+     * @param messageParams message parameters
+     * @return AuthPluginException
+     */
+    public AuthPluginException create(Object... messageParams) {
+        String ms = MessageFormat.format(message, messageParams);
+        message = EscapeControlCode.escape(ms);
+        return create();
     }
 
     /**

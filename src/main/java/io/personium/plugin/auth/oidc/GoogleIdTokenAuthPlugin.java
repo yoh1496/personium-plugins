@@ -26,6 +26,7 @@ import io.personium.plugin.base.PluginException;
 import io.personium.plugin.base.PluginLog;
 import io.personium.plugin.base.auth.AuthConst;
 import io.personium.plugin.base.auth.AuthPlugin;
+import io.personium.plugin.base.auth.AuthPluginException;
 import io.personium.plugin.base.auth.AuthenticatedIdentity;
 
 /**
@@ -97,10 +98,10 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
      * @return au AuthenticatedIdentity
      * @throws PluginException PluginException
      */
-    public AuthenticatedIdentity authenticate(Map<String, List<String>> body) throws PluginException {
+    public AuthenticatedIdentity authenticate(Map<String, List<String>> body) throws AuthPluginException {
         AuthenticatedIdentity ai = null;
         if (body == null) {
-            throw OidcPluginException.REQUIRED_PARAM_MISSING.params("Body");
+            throw OidcPluginException.REQUIRED_PARAM_MISSING.create("Body");
         }
 
         // verify idToken
@@ -111,7 +112,7 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
             // id_tokenをパースする
             ret = GoogleIdToken.parse(idToken);
         } catch (PluginException pe) {
-            throw OidcPluginException.OIDC_INVALID_ID_TOKEN;
+            throw OidcPluginException.INVALID_ID_TOKEN.create();
         }
 
         // Tokenの検証   検証失敗時にはPluginExceptionが投げられる
@@ -125,13 +126,13 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
         // Googleが認めたissuerであるかどうか
         if (!issuer.equals(URL_ISSUER) && !issuer.equals(URL_HTTPS + URL_ISSUER)) {
             PluginLog.OIDC.INVALID_ISSUER.params(issuer).writeLog();
-            throw OidcPluginException.OIDC_AUTHN_FAILED;
+            throw OidcPluginException.AUTHN_FAILED.create();
         }
 
         // Googleに登録したサービス/アプリのClientIDかを確認
         // DcConfigPropatiesに登録したClientIdに一致していればOK
         if (!OIDC.isProviderClientIdTrusted(OIDC_PROVIDER, aud)) {
-            throw OidcPluginException.OIDC_WRONG_AUDIENCE.params(aud);
+            throw OidcPluginException.WRONG_AUDIENCE.create(aud);
         }
 
         // 正常な場合、AuthenticatedIdentity を返却する。
@@ -151,14 +152,14 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
      * @return Value corresponding to key
      * @throws PluginException Value does not exist
      */
-    private String getSingleValue(Map<String, List<String>> body, String key) throws PluginException {
+    private String getSingleValue(Map<String, List<String>> body, String key) throws AuthPluginException {
         List<String> valueList = body.get(key);
         if (valueList == null) {
-            throw OidcPluginException.REQUIRED_PARAM_MISSING.params(key);
+            throw OidcPluginException.REQUIRED_PARAM_MISSING.create(key);
         }
         String value = valueList.get(0);
         if (StringUtils.isEmpty(value)) {
-            throw OidcPluginException.REQUIRED_PARAM_MISSING.params(key);
+            throw OidcPluginException.REQUIRED_PARAM_MISSING.create(key);
         }
         return value;
     }
