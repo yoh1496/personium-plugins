@@ -96,7 +96,7 @@ public class GoogleIdTokenAuthPlugin implements AuthPlugin {
      * authenticate.
      * @param body body
      * @return au AuthenticatedIdentity
-     * @throws PluginException PluginException
+     * @throws AuthPluginException AuthPluginException
      */
     public AuthenticatedIdentity authenticate(Map<String, List<String>> body) throws AuthPluginException {
         AuthenticatedIdentity ai = null;
