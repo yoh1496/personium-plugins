@@ -99,7 +99,7 @@ public class GoogleIdToken {
      * @param idToken IDトークン
      *
      * @return googleIdToken GoogleIdToken
-     * @throws PluginException PluginException
+     * @throws AuthPluginException AuthPluginException
      */
     public static GoogleIdToken parse(String idToken) throws AuthPluginException {
         GoogleIdToken ret = new GoogleIdToken();
@@ -132,7 +132,7 @@ public class GoogleIdToken {
 
     /**
      * Verification signature.
-     * @throws PluginException PluginException
+     * @throws AuthPluginException AuthPluginException
      */
     public void verify() throws AuthPluginException {
         // 有効期限
@@ -248,17 +248,17 @@ public class GoogleIdToken {
      * isExpired.
      * @throws PluginException
      */
-    private void isExpired(Long exp) throws AuthPluginException {
+    private void isExpired(Long expLong) throws AuthPluginException {
         // exp で Token の有効期限が切れているか確認
         // Tokenに有効期限(exp)があるかnullチェック
-        if (exp == null) {
+        if (expLong == null) {
             throw OidcPluginException.INVALID_ID_TOKEN.create("ID Token expiration time null.");
         }
 
         // expireしていないかチェック(60秒くらいは過ぎても良い)
-        boolean expired = (exp + VERIFY_WAIT) * VERIFY_SECOND < System.currentTimeMillis();
+        boolean expired = (expLong + VERIFY_WAIT) * VERIFY_SECOND < System.currentTimeMillis();
         if (expired) {
-            throw OidcPluginException.EXPIRED_ID_TOKEN.create("This ID Token has expired. EXP=" + exp);
+            throw OidcPluginException.EXPIRED_ID_TOKEN.create("This ID Token has expired. EXP=" + expLong);
         }
     }
 
